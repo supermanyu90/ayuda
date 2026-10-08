@@ -1,0 +1,90 @@
+# Render Blueprint for Ayuda: API (Node) + static web app + PostgreSQL (PostGIS).
+# Secrets are `sync: false`: Render prompts for them on first deploy; none are committed.
+databases:
+  - name: ayuda-db
+    databaseName: ayuda
+    user: ayuda
+    plan: basic-256mb
+    region: singapore
+
+services:
+  - type: web
+    name: ayuda-api
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run build -w server
+    # Migrations run once per deploy, before traffic switches (controlled, idempotent).
+    preDeployCommand: npm run db:migrate:prod -w server
+    startCommand: npm start -w server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ayuda-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "false" # internal network connection
+      - key: FRONTEND_ORIGIN
+        sync: false # e.g. https://ayuda-web.onrender.com
+      # Gemma 3 4B. Ollama cannot run inside this web service, so point at an
+      # OpenAI-compatible endpoint serving Gemma 3 4B (see README: "Gemma on Render").
+      - key: GEMMA_PROVIDER
+        value: openai
+      - key: GEMMA_BASE_URL
+        sync: false
+      - key: GEMMA_MODEL
+        sync: false
+      - key: GEMMA_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: GEOCODER_USER_AGENT
+        value: Ayuda/0.1 (volunteering app)
+      - key: ADMIN_TOKEN
+        generateValue: true
+
+  - type: web
+    name: ayuda-web
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build -w web
+    staticPublishPath: web/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: ayuda-api
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://tile.openstreetmap.org; media-src blob:; connect-src 'self' https://*.onrender.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: "geolocation=(self), microphone=(self), camera=()"
+
+# Optional: self-host Gemma 3 4B on Render as a private service (needs >= 4 GB RAM).
+# Uncomment, then set GEMMA_PROVIDER=openai, GEMMA_BASE_URL=http://ayuda-gemma:11434/v1,
+# GEMMA_MODEL=gemma3:4b on ayuda-api.
+#  - type: pserv
+#    name: ayuda-gemma
+#    runtime: docker
+#    plan: pro
+#    dockerfilePath: deploy/ollama/Dockerfile
+#    dockerContext: deploy/ollama

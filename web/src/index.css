@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+
+@theme {
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif;
+
+  --color-paper: #faf6ee;
+  --color-card: #ffffff;
+  --color-ink: #14251e;
+  --color-muted: #4d5f57;
+  --color-line: #ddd5c4;
+  --color-forest: #173c2f;
+  --color-forest-soft: #e3ece6;
+  --color-marigold: #f2a516;
+  --color-marigold-soft: #fdf0d3;
+  --color-danger: #a3271b;
+  --color-danger-soft: #fbe6e3;
+  --color-demo: #6a3fb5;
+  --color-demo-soft: #efe8fb;
+}
+
+/* High-contrast mode (Settings). */
+:root[data-contrast='high'] {
+  --color-paper: #ffffff;
+  --color-card: #ffffff;
+  --color-ink: #000000;
+  --color-muted: #1f1f1f;
+  --color-line: #000000;
+  --color-forest: #00331f;
+  --color-forest-soft: #ffffff;
+  --color-marigold: #ffb000;
+  --color-marigold-soft: #ffffff;
+}
+
+:root[data-text='large'] {
+  font-size: 118.75%;
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  min-height: 100dvh;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-marigold);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+:root[data-contrast='high'] :focus-visible {
+  outline: 4px solid #000;
+  box-shadow: 0 0 0 7px #ffb000;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Recording pulse; disabled for reduced motion. */
+@keyframes ayuda-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(242 165 22 / 0.55); }
+  70% { box-shadow: 0 0 0 22px rgb(242 165 22 / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(242 165 22 / 0); }
+}
+.recording {
+  animation: ayuda-pulse 1.6s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.leaflet-container {
+  font-family: var(--font-sans);
+  border-radius: 1rem;
+}
