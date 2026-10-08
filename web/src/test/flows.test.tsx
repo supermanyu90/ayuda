@@ -86,7 +86,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-function renderAt(path: string, cfg = config()) {
+function renderAt(path: string | { pathname: string; state: unknown }, cfg = config()) {
   return render(
     <AppProvider initialConfig={cfg}>
       <MemoryRouter initialEntries={[path]}>
@@ -298,5 +298,20 @@ describe('screen exit mode', () => {
     expect(go).toHaveAttribute('rel', 'noopener noreferrer');
     expect(screen.getByRole('link', { name: /call/i })).toHaveAttribute('href', 'tel:+915550100000');
     expect(screen.getByText(/fictional demo organisation/i)).toBeInTheDocument();
+  });
+
+  it('shows how little screen time the plan took compared with time in the world', async () => {
+    handler = () =>
+      json({
+        ...match().matches[0],
+        city: 'Mumbai',
+        min_age: null,
+        physical_requirement: null,
+        background_check: false,
+        contact: { address_text: 'x', contact_phone: null, contact_email: null, website: null, safeguarding_notes: '', description: '' },
+      });
+    renderAt({ pathname: '/go/11111111-1111-1111-1111-111111111111', state: { planned: 120, onScreen: 112 } });
+    expect(await screen.findByText(/1 min 52 s/)).toBeInTheDocument();
+    expect(screen.getByText('64×')).toBeInTheDocument();
   });
 });

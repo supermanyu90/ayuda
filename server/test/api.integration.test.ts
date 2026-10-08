@@ -240,7 +240,10 @@ describe('volunteer history access control', () => {
     const match = await request(app).post('/api/match').send(demoMatch());
     const opp = match.body.matches[0].opportunity_id;
 
-    const created = await request(app).post('/api/volunteer/actions').set('authorization', `Bearer ${a}`).send({ opportunity_id: opp, planned_minutes: 120 });
+    const created = await request(app)
+      .post('/api/volunteer/actions')
+      .set('authorization', `Bearer ${a}`)
+      .send({ opportunity_id: opp, planned_minutes: 120, screen_seconds: 90 });
     expect(created.status).toBe(201);
 
     expect((await request(app).get('/api/volunteer/actions').set('authorization', `Bearer ${b}`)).body.actions).toHaveLength(0);
@@ -251,6 +254,9 @@ describe('volunteer history access control', () => {
     expect(done.status).toBe(200);
     const mine = await request(app).get('/api/volunteer/actions').set('authorization', `Bearer ${a}`);
     expect(mine.body.completed_minutes).toBe(120);
+    // 120 real-world minutes for 1.5 minutes on screen.
+    expect(mine.body.screen_minutes).toBe(1.5);
+    expect(mine.body.world_minutes_per_screen_minute).toBe(80);
 
     expect((await request(app).get('/api/volunteer/actions')).status).toBe(401);
     expect((await request(app).get('/api/volunteer/actions').set('authorization', 'Bearer forged')).status).toBe(401);

@@ -1,4 +1,5 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { formatDuration } from '../lib/screenTime';
 import { Alert, Card, DemoBadge, PageTitle, Spinner, buttonStyles } from '../components/ui';
 import { useOpportunity } from '../lib/useOpportunity';
 
@@ -6,6 +7,7 @@ import { useOpportunity } from '../lib/useOpportunity';
 export function Go() {
   const { id } = useParams();
   const { data: o, error } = useOpportunity(id);
+  const plan = useLocation().state as { planned?: number; onScreen?: number } | null;
   if (error) return <Alert tone="error">{error}</Alert>;
   if (!o) return <Spinner label="Loading…" />;
   if (!o.contact) return <Alert tone="warn">Contact details are only shared for verified organisations.</Alert>;
@@ -18,6 +20,18 @@ export function Go() {
   return (
     <>
       <PageTitle sub="Your next step is outside the app.">You're ready to help.</PageTitle>
+
+      {plan?.planned && plan.onScreen !== undefined && plan.onScreen > 0 && (
+        <p className="mb-5 rounded-2xl bg-marigold-soft px-4 py-3 text-lg">
+          You spent <strong>{formatDuration(plan.onScreen)}</strong> on your screen to plan <strong>{plan.planned} minutes</strong> out in the world.
+          {plan.planned * 60 > plan.onScreen && (
+            <>
+              {' '}
+              That's <strong>{Math.round((plan.planned * 60) / plan.onScreen)}×</strong> more time with people than with your phone.
+            </>
+          )}
+        </p>
+      )}
 
       {o.is_demo && (
         <div className="mb-4">

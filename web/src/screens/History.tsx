@@ -7,7 +7,12 @@ import type { VolunteerAction } from '../lib/types';
 
 export function History() {
   const [token] = useState(() => readJSON<string | null>('ayuda.volunteer', null));
-  const [data, setData] = useState<{ actions: VolunteerAction[]; completed_minutes: number } | null>(null);
+  const [data, setData] = useState<{
+    actions: VolunteerAction[];
+    completed_minutes: number;
+    screen_minutes: number;
+    world_minutes_per_screen_minute: number | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
@@ -45,6 +50,12 @@ export function History() {
             <p className="font-display text-5xl font-extrabold text-forest">
               {data.completed_minutes} <span className="text-2xl">minutes</span>
             </p>
+            {data.world_minutes_per_screen_minute !== null && (
+              <p className="mt-1 text-muted">
+                <strong className="text-ink">{data.world_minutes_per_screen_minute} minutes in the world</strong> for every minute in Ayuda ({data.screen_minutes} min on
+                screen in total).
+              </p>
+            )}
           </Card>
           <ul className="flex flex-col gap-3">
             {data.actions.map((a) => (

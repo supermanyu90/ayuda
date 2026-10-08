@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Button, Card, Chip, DemoBadge, PageTitle, Spinner, VerificationBadge, pretty } from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { useApp } from '../lib/state';
+import { resetScreenTimer, screenSeconds } from '../lib/screenTime';
 import { useOpportunity } from '../lib/useOpportunity';
 
 export function Opportunity() {
@@ -26,14 +27,16 @@ export function Opportunity() {
   async function commit() {
     setSaving(true);
     setSaveError(null);
+    const onScreen = screenSeconds();
     try {
-      await api.commit(await volunteerToken(), o!.opportunity_id, planned);
+      await api.commit(await volunteerToken(), o!.opportunity_id, planned, onScreen);
     } catch (err) {
       // History is a convenience: never block someone from going to help.
       setSaveError(err instanceof ApiError ? err.message : null);
     } finally {
       setSaving(false);
-      navigate(`/go/${o!.opportunity_id}`);
+      resetScreenTimer();
+      navigate(`/go/${o!.opportunity_id}`, { state: { planned, onScreen } });
     }
   }
 

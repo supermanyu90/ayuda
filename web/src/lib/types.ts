@@ -111,6 +111,7 @@ export interface VolunteerAction {
   is_demo: boolean;
   status: 'committed' | 'completed' | 'cancelled';
   planned_minutes: number;
+  screen_seconds: number | null;
   created_at: string;
   completed_at: string | null;
 }

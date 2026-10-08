@@ -4,8 +4,10 @@
 
 Ayuda is a voice-first, location-aware volunteering app. You say what you can offer ("two hours on Sunday morning, I can teach English to kids, no money"), and Ayuda finds verified organisations nearby that need exactly that. Then it gets out of your way so you can go and help.
 
+Built for the [DEV Hacktoberfest Open-Source AI Challenge, Week 1: *Touch Grass*](https://dev.to/challenges/hacktoberfest-week1-2026-10-05): open-weight AI that gets people off the screen and into the world.
+
 > Most AI products optimise for more screen time. Ayuda optimises for the opposite: the shortest safe path from one sentence to real-world action.
-> Success metric: **real-world volunteering minutes per minute spent in Ayuda.**
+> Success metric: **real-world volunteering minutes per minute spent in Ayuda.** The app measures it: visible-tab time is counted on-device from the start of a plan to the commitment, and the exit screen tells you, e.g. *"You spent 1 min 52 s on your screen to plan 120 minutes out in the world. That's 64× more time with people than with your phone."*
 
 ---
 
@@ -116,7 +118,7 @@ Demo Mode is the evaluator view. Only in Demo Mode does the results screen show 
 ## Testing
 
 ```bash
-npm test                         # server (83) + web (19)
+npm test                         # server (83) + web (22)
 npm run typecheck && npm run build
 npm run eval:gemma -w server     # live Gemma 3 4B evaluation (real model, no mocks)
 ```
@@ -146,6 +148,17 @@ Server-side API keys only. Zod validation on every input (strict objects). Param
 3. Use QLoRA on Gemma 3 4B for intent extraction and normalisation only. Never put organisation facts in the weights.
 4. Compare base and tuned models on the held-out set with `scripts/eval-gemma.ts`.
 5. Serve the adapter through Ollama (`ADAPTER` in a Modelfile) or vLLM and change `GEMMA_MODEL`. No code changes are needed.
+
+## Why open weights
+
+- **Privacy by architecture**: the model that reads "I'm free Sunday, I can help kids" runs on hardware you control. With Ollama, your request never leaves the machine.
+- **Auditable and fixable**: when Gemma 3 4B misread "half an hour" as 90 minutes, the fix was visible, testable code (`ai/grounding.ts`), and `npm run eval:gemma` proves it (9/12 → 12/12).
+- **Tunable for a community**: the same prompt contract is the LoRA/QLoRA training format, so a city's volunteer network can adapt the model to its own languages and causes without asking a vendor.
+- **Cheap enough to give away**: a 4B model runs on a laptop, so volunteering infrastructure doesn't need a per-token budget.
+
+## License
+
+Code: MIT (see `LICENSE`). Gemma model weights are not part of this repo and are covered by Google's [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
 
 ## Honest status
 

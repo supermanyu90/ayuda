@@ -25,15 +25,32 @@ export function volunteerRoutes({ db }: Deps): Router {
     const profile = await profileOf(req, res);
     if (!profile) return;
     const actions = await listActions(db, profile);
-    const minutes = actions.filter((a) => a.status === 'completed').reduce((s, a) => s + a.planned_minutes, 0);
-    res.json({ actions, completed_minutes: minutes });
+    const completed = actions.filter((a) => a.status === 'completed');
+    const minutes = completed.reduce((s, a) => s + a.planned_minutes, 0);
+    // Success metric from the product brief: real-world minutes per minute on screen.
+    const timed = completed.filter((a) => a.screen_seconds !== null);
+    const screenMinutes = timed.reduce((s, a) => s + a.screen_seconds!, 0) / 60;
+    const timedMinutes = timed.reduce((s, a) => s + a.planned_minutes, 0);
+    res.json({
+      actions,
+      completed_minutes: minutes,
+      screen_minutes: Math.round(screenMinutes * 10) / 10,
+      world_minutes_per_screen_minute: screenMinutes > 0 ? Math.round(timedMinutes / screenMinutes) : null,
+    });
   });
 
   r.post('/actions', limiter(30), async (req, res) => {
     const profile = await profileOf(req, res);
     if (!profile) return;
-    const body = z.object({ opportunity_id: z.uuid(), planned_minutes: z.number().int().min(1).max(1440) }).strict().parse(req.body);
-    const id = await createAction(db, profile, body.opportunity_id, body.planned_minutes);
+    const body = z
+      .object({
+        opportunity_id: z.uuid(),
+        planned_minutes: z.number().int().min(1).max(1440),
+        screen_seconds: z.number().int().min(0).max(86400).optional(),
+      })
+      .strict()
+      .parse(req.body);
+    const id = await createAction(db, profile, body.opportunity_id, body.planned_minutes, body.screen_seconds ?? null);
     if (!id) {
       res.status(404).json({ error: 'not_found' });
       return;

@@ -22,16 +22,23 @@ export interface VolunteerActionRow {
   is_demo: boolean;
   status: 'committed' | 'completed' | 'cancelled';
   planned_minutes: number;
+  screen_seconds: number | null;
   created_at: string;
   completed_at: string | null;
 }
 
-export async function createAction(db: Db, profileId: string, opportunityId: string, minutes: number): Promise<string | null> {
+export async function createAction(
+  db: Db,
+  profileId: string,
+  opportunityId: string,
+  minutes: number,
+  screenSeconds: number | null = null,
+): Promise<string | null> {
   const { rows } = await db.query<{ id: string }>(
-    `INSERT INTO volunteer_actions (profile_id, opportunity_id, planned_minutes)
-     SELECT $1, o.id, $3 FROM volunteer_opportunities o WHERE o.id = $2 AND o.active
+    `INSERT INTO volunteer_actions (profile_id, opportunity_id, planned_minutes, screen_seconds)
+     SELECT $1, o.id, $3, $4 FROM volunteer_opportunities o WHERE o.id = $2 AND o.active
      RETURNING id`,
-    [profileId, opportunityId, minutes],
+    [profileId, opportunityId, minutes, screenSeconds],
   );
   return rows[0]?.id ?? null;
 }
@@ -39,7 +46,7 @@ export async function createAction(db: Db, profileId: string, opportunityId: str
 export async function listActions(db: Db, profileId: string): Promise<VolunteerActionRow[]> {
   const { rows } = await db.query<VolunteerActionRow>(
     `SELECT a.id, a.opportunity_id, o.title, org.name AS organisation_name, org.is_demo, a.status,
-            a.planned_minutes, a.created_at, a.completed_at
+            a.planned_minutes, a.screen_seconds, a.created_at, a.completed_at
        FROM volunteer_actions a
        JOIN volunteer_opportunities o ON o.id = a.opportunity_id
        JOIN organisations org ON org.id = o.organisation_id

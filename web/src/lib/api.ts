@@ -63,9 +63,13 @@ export const api = {
   speechUrl: (summaryId: string) => `${BASE}/api/voice/speak/${encodeURIComponent(summaryId)}`,
 
   volunteerSession: () => call<{ token: string }>('/api/volunteer/session', { method: 'POST' }),
-  actions: (token: string) => call<{ actions: VolunteerAction[]; completed_minutes: number }>('/api/volunteer/actions', { token }),
-  commit: (token: string, opportunity_id: string, planned_minutes: number) =>
-    call<{ id: string }>('/api/volunteer/actions', { method: 'POST', token, body: json({ opportunity_id, planned_minutes }) }),
+  actions: (token: string) =>
+    call<{ actions: VolunteerAction[]; completed_minutes: number; screen_minutes: number; world_minutes_per_screen_minute: number | null }>(
+      '/api/volunteer/actions',
+      { token },
+    ),
+  commit: (token: string, opportunity_id: string, planned_minutes: number, screen_seconds: number) =>
+    call<{ id: string }>('/api/volunteer/actions', { method: 'POST', token, body: json({ opportunity_id, planned_minutes, screen_seconds }) }),
   setActionStatus: (token: string, id: string, status: 'completed' | 'cancelled') =>
     call<{ ok: boolean }>(`/api/volunteer/actions/${id}`, { method: 'PATCH', token, body: json({ status }) }),
   deleteMe: (token: string) => call<void>('/api/volunteer/me', { method: 'DELETE', token }),
