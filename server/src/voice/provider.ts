@@ -5,8 +5,8 @@ export interface SpeechToText {
 }
 
 export interface TextToSpeech {
-  /** Returns MP3 audio bytes. */
-  synthesize(text: string): Promise<Buffer>;
+  /** Streams MP3 audio so playback can start on the first chunk. */
+  synthesizeStream(text: string): Promise<ReadableStream<Uint8Array>>;
 }
 
 export interface VoiceProvider extends SpeechToText, TextToSpeech {
@@ -28,7 +28,7 @@ export class NoVoiceProvider implements VoiceProvider {
   async transcribe(): Promise<never> {
     throw new VoiceUnavailableError('Voice is not configured (ELEVENLABS_API_KEY missing)');
   }
-  async synthesize(): Promise<never> {
+  async synthesizeStream(): Promise<never> {
     throw new VoiceUnavailableError('Voice is not configured (ELEVENLABS_API_KEY missing)');
   }
 }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { extractIntent, summariseMatches, type ExplanationFact, type IntentResult } from '../ai/services.js';
+import { extractIntent, type ExplanationFact, type IntentResult } from '../ai/services.js';
 import { DEMO_CENTRE } from '../db/demoData.js';
 import { LatLngSchema, MatchRequestSchema, RadiusSchema, normaliseIntent, type VolunteerIntent } from '../domain/schemas.js';
 import { DEFAULT_RADIUS_KM } from '../domain/taxonomy.js';
@@ -45,7 +45,7 @@ function toFact(m: ScoredCandidate): ExplanationFact {
   };
 }
 
-export function discoveryRoutes({ db, ai, speech }: Deps): Router {
+export function discoveryRoutes({ db, ai, summaries }: Deps): Router {
   const r = Router();
 
   async function discover(intent: VolunteerIntent, where: { lat: number; lng: number }, radiusKm: number, demo: boolean, includeUnverified: boolean) {
@@ -54,7 +54,8 @@ export function discoveryRoutes({ db, ai, speech }: Deps): Router {
     return { candidates: candidates.length, ranked };
   }
 
-  // Main flow: text (typed or transcribed) + location -> Gemma intent -> PostGIS -> deterministic match -> Gemma summary.
+  // Main flow: text (typed or transcribed) + location -> Gemma intent -> PostGIS -> deterministic match.
+  // The Gemma summary is fetched separately (GET /summary/:id) so results show without waiting for it.
   r.post('/match', limiter(20), async (req, res) => {
     const body = MatchRequestSchema.parse(req.body);
     const demo = body.demo === true;
@@ -73,12 +74,11 @@ export function discoveryRoutes({ db, ai, speech }: Deps): Router {
         excluded: 0,
         matches: [],
         near_misses: [],
-        summary: { summary: text, source: 'fallback_rules', fallback_reason: 'request not understood', speech_token: speech.sign(text) },
+        summary_id: summaries.create([], { summary: text, source: 'fallback_rules', fallback_reason: 'request not understood' }),
       });
       return;
     }
     const { candidates, ranked } = await discover(intentResult.intent, where, radiusKm, demo, body.include_unverified === true);
-    const summary = await summariseMatches(ai, ranked.matches.map(toFact));
 
     res.json({
       demo,
@@ -88,7 +88,7 @@ export function discoveryRoutes({ db, ai, speech }: Deps): Router {
       excluded: ranked.excluded.length,
       matches: ranked.matches.map(toCard),
       near_misses: ranked.excluded.filter((e) => e.near_miss).slice(0, 3),
-      summary: { ...summary, speech_token: speech.sign(summary.summary) },
+      summary_id: summaries.create(ranked.matches.map(toFact)),
     });
   });
 
@@ -124,6 +124,15 @@ export function discoveryRoutes({ db, ai, speech }: Deps): Router {
       matches: ranked.matches.map(toCard),
       near_misses: [],
     });
+  });
+
+  r.get('/summary/:id', limiter(30), async (req, res) => {
+    const pending = summaries.get(z.uuid().parse(req.params.id), ai);
+    if (!pending) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    res.json(await pending);
   });
 
   r.get('/opportunities/:id', async (req, res) => {

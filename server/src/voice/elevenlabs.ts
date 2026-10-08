@@ -34,13 +34,14 @@ export class ElevenLabsVoice implements VoiceProvider {
     return { text: data.text.trim(), language: typeof data.language_code === 'string' ? data.language_code : null };
   }
 
-  async synthesize(text: string): Promise<Buffer> {
-    const res = await this.call(`${API}/text-to-speech/${encodeURIComponent(this.opts.voiceId)}?output_format=mp3_44100_64`, {
+  async synthesizeStream(text: string): Promise<ReadableStream<Uint8Array>> {
+    const res = await this.call(`${API}/text-to-speech/${encodeURIComponent(this.opts.voiceId)}/stream?output_format=mp3_44100_64`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'audio/mpeg' },
       body: JSON.stringify({ text, model_id: this.opts.ttsModel }),
     });
-    return Buffer.from(await res.arrayBuffer());
+    if (!res.body) throw new VoiceUnavailableError('ElevenLabs returned no audio');
+    return res.body;
   }
 
   private async call(url: string, init: RequestInit): Promise<Response> {

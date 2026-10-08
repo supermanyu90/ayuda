@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 
@@ -41,25 +41,3 @@ export function requireAdmin(adminToken: string) {
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 export const newVolunteerToken = () => randomBytes(32).toString('base64url');
 export const volunteerToken = bearer;
-
-/**
- * Speech tokens bind /api/voice/speak to text the server itself produced, so the
- * TTS endpoint cannot be abused as a free general-purpose text-to-speech service.
- */
-export class SpeechSigner {
-  constructor(
-    private readonly secret: Buffer = randomBytes(32),
-    private readonly ttlMs = 10 * 60_000,
-  ) {}
-  sign(text: string, now = Date.now()): string {
-    const exp = now + this.ttlMs;
-    return `${exp}.${createHmac('sha256', this.secret).update(`${exp}:${text}`).digest('base64url')}`;
-  }
-  verify(text: string, token: string, now = Date.now()): boolean {
-    const [expStr, mac] = token.split('.');
-    const exp = Number(expStr);
-    if (!mac || !Number.isFinite(exp) || exp < now) return false;
-    const expected = createHmac('sha256', this.secret).update(`${exp}:${text}`).digest('base64url');
-    return safeEqual(mac, expected);
-  }
-}

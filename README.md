@@ -23,10 +23,12 @@ Ayuda is a voice-first, location-aware volunteering app. You say what you can of
                            ▼
                  Deterministic matcher (hard filters → weighted score → near misses)
                            ▼
+      results shown ─┐   (summary fetched separately, so results don't wait for it)
+                     ▼
                  Gemma 3 4B one-paragraph summary (top 3 facts only; number/claim-grounded,
                            │                       else a template)
                            ▼
-                 ElevenLabs TTS (only server-signed summaries) ──► details ──► 🚶 Go Help
+                 ElevenLabs streaming TTS (server-generated summaries only) ──► details ──► 🚶 Go Help
 ```
 
 | Layer | Where | Notes |
@@ -114,7 +116,7 @@ Demo Mode is the evaluator view. Only in Demo Mode does the results screen show 
 ## Testing
 
 ```bash
-npm test                         # server (82) + web (17)
+npm test                         # server (83) + web (19)
 npm run typecheck && npm run build
 npm run eval:gemma -w server     # live Gemma 3 4B evaluation (real model, no mocks)
 ```
@@ -125,7 +127,7 @@ npm run eval:gemma -w server     # live Gemma 3 4B evaluation (real model, no mo
 
 ## Security
 
-Server-side API keys only. Zod validation on every input (strict objects). Parameterised SQL everywhere. Helmet headers with a `default-src 'none'` CSP on the API. Exact-origin CORS. Per-route rate limits (AI 20/min, voice 10/min, geocode 30/min, global 120/min). A 16 KB JSON body limit. Audio uploads are capped at 2 MB with an audio MIME allow-list. Admin uses a timing-safe token compare and stays disabled when the token is weak. Volunteer actions are scoped by owner in SQL. TTS only accepts HMAC-signed, expiring server summaries, so it can't be used as a free TTS proxy. Organisation websites must be `https://`. All organisation and model text renders as React text, never HTML. Errors never return stack traces or upstream bodies.
+Server-side API keys only. Zod validation on every input (strict objects). Parameterised SQL everywhere. Helmet headers with a `default-src 'none'` CSP on the API. Exact-origin CORS. Per-route rate limits (AI 20/min, voice 10/min, geocode 30/min, global 120/min). A 16 KB JSON body limit. Audio uploads are capped at 2 MB with an audio MIME allow-list. Admin uses a timing-safe token compare and stays disabled when the token is weak. Volunteer actions are scoped by owner in SQL. TTS only voices a summary the server generated for a recent search, looked up by a random, expiring ID with no client-supplied text, so it can't be used as a free TTS proxy. Organisation websites must be `https://`. All organisation and model text renders as React text, never HTML. Errors never return stack traces or upstream bodies.
 
 ## Render deployment
 

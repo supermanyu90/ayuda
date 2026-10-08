@@ -1,9 +1,9 @@
 import { createAIProvider } from './ai/index.js';
+import { SummaryStore } from './ai/summaryStore.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createPool } from './db/pool.js';
 import { NominatimGeocoder } from './geo/geocoder.js';
-import { SpeechSigner } from './middleware/security.js';
 import { createVoiceProvider } from './voice/index.js';
 
 const config = loadConfig();
@@ -17,7 +17,7 @@ const app = createApp({
   ai,
   voice,
   geocoder: new NominatimGeocoder(config.NOMINATIM_URL, config.GEOCODER_USER_AGENT, config.GEOCODER_COUNTRY_CODES),
-  speech: new SpeechSigner(),
+  summaries: new SummaryStore(),
 });
 
 const server = app.listen(config.PORT, () => {

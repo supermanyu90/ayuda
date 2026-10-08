@@ -13,7 +13,7 @@ import { createPool } from '../src/db/pool.js';
 import { seed } from '../src/db/seed.js';
 import type { Geocoder } from '../src/geo/geocoder.js';
 import { GeocoderUnavailableError } from '../src/geo/geocoder.js';
-import { SpeechSigner } from '../src/middleware/security.js';
+import { SummaryStore } from '../src/ai/summaryStore.js';
 import { NoVoiceProvider, type VoiceProvider } from '../src/voice/provider.js';
 import { FakeAI, intentJson, unavailableAI } from './helpers.js';
 
@@ -49,13 +49,13 @@ const fakeVoice: VoiceProvider = {
   async transcribe() {
     return { text: 'I can teach English', language: 'en' };
   },
-  async synthesize() {
-    return Buffer.from('ID3fake');
+  async synthesizeStream() {
+    return new Blob([Buffer.from('ID3fake')]).stream();
   },
 };
 
 const appWith = (over: Partial<Parameters<typeof createApp>[0]> = {}) =>
-  createApp({ config, db: pool, ai: teacherAI, voice: new NoVoiceProvider(), geocoder, speech: new SpeechSigner(), ...over });
+  createApp({ config, db: pool, ai: teacherAI, voice: new NoVoiceProvider(), geocoder, summaries: new SummaryStore(), ...over });
 
 const SUNDAY_TEXT = "I have two hours on Sunday morning, I can teach English to children. I don't want to donate money.";
 const demoMatch = (radius_km = 5, text = SUNDAY_TEXT) => ({ text, location: { lat: 0, lng: 0 }, demo: true, radius_km });
@@ -129,10 +129,27 @@ describe('geospatial discovery (PostGIS)', () => {
   });
 
   it('zero results returns a helpful summary, not an error', async () => {
-    const res = await request(appWith()).post('/api/match').send({ text: SUNDAY_TEXT, location: { lat: -33.9, lng: 18.4 }, radius_km: 1 });
+    const app = appWith();
+    const res = await request(app).post('/api/match').send({ text: SUNDAY_TEXT, location: { lat: -33.9, lng: 18.4 }, radius_km: 1 });
     expect(res.status).toBe(200);
     expect(res.body.matches).toEqual([]);
-    expect(res.body.summary.summary).toMatch(/couldn't find/);
+    const summary = await request(app).get(`/api/summary/${res.body.summary_id}`);
+    expect(summary.body.summary).toMatch(/couldn't find/);
+  });
+
+  it('results return before the summary is generated; the summary is fetched separately and memoised', async () => {
+    const ai = new FakeAI((msgs) =>
+      msgs[0]!.content.includes('spoken summary') ? JSON.stringify({ summary: 'The best fit is close by.' }) : intentJson({ skills: ['teaching'], beneficiaries: ['children'] }),
+    );
+    const app = appWith({ ai });
+    const res = await request(app).post('/api/match').send(demoMatch());
+    expect(ai.calls).toHaveLength(1); // intent only
+    expect(res.body.summary).toBeUndefined();
+    const [a, b] = await Promise.all([request(app).get(`/api/summary/${res.body.summary_id}`), request(app).get(`/api/summary/${res.body.summary_id}`)]);
+    expect(a.body).toMatchObject({ summary: 'The best fit is close by.', source: 'gemma' });
+    expect(b.body).toEqual(a.body);
+    expect(ai.calls).toHaveLength(2); // one summary call shared by both requests
+    expect((await request(app).get('/api/summary/00000000-0000-4000-8000-000000000000')).status).toBe(404);
   });
 
   it('rejects invalid coordinates and radii', async () => {
@@ -143,10 +160,11 @@ describe('geospatial discovery (PostGIS)', () => {
   });
 
   it('works end-to-end with Gemma down (deterministic fallback, labelled)', async () => {
-    const res = await request(appWith({ ai: unavailableAI() })).post('/api/match').send(demoMatch());
+    const app = appWith({ ai: unavailableAI() });
+    const res = await request(app).post('/api/match').send(demoMatch());
     expect(res.status).toBe(200);
     expect(res.body.intent.source).toBe('fallback_rules');
-    expect(res.body.summary.source).toBe('fallback_rules');
+    expect((await request(app).get(`/api/summary/${res.body.summary_id}`)).body.source).toBe('fallback_rules');
     expect(res.body.matches[0].organisation_name).toBe('Little Lanterns Reading Club (Demo)');
   });
 
@@ -192,16 +210,25 @@ describe('voice', () => {
     const res = await request(appWith({ voice: fakeVoice })).post('/api/voice/transcribe').attach('audio', Buffer.from('x'), { filename: 'a.html', contentType: 'text/html' });
     expect(res.status).toBe(400);
   });
-  it('only speaks server-issued summaries', async () => {
-    const speech = new SpeechSigner();
-    const app = appWith({ voice: fakeVoice, speech });
+  it('streams speech only for summaries this server produced', async () => {
+    const app = appWith({ voice: fakeVoice });
     const match = await request(app).post('/api/match').send(demoMatch());
-    const { summary, speech_token } = match.body.summary;
-    const ok = await request(app).post('/api/voice/speak').send({ text: summary, token: speech_token });
+    const ok = await request(app).get(`/api/voice/speak/${match.body.summary_id}`).buffer(true).parse((res, cb) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => cb(null, Buffer.concat(chunks)));
+    });
     expect(ok.status).toBe(200);
     expect(ok.headers['content-type']).toBe('audio/mpeg');
-    const forged = await request(app).post('/api/voice/speak').send({ text: 'Free TTS for everyone', token: speech_token });
-    expect(forged.status).toBe(403);
+    expect(ok.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect((ok.body as Buffer).toString()).toBe('ID3fake');
+    expect((await request(app).get('/api/voice/speak/00000000-0000-4000-8000-000000000000')).status).toBe(404);
+    expect((await request(app).post('/api/voice/speak').send({ text: 'Free TTS for everyone' })).status).toBe(404);
+  });
+  it('speech is 503 when voice is not configured', async () => {
+    const app = appWith();
+    const match = await request(app).post('/api/match').send(demoMatch());
+    expect((await request(app).get(`/api/voice/speak/${match.body.summary_id}`)).status).toBe(503);
   });
 });
 
@@ -242,7 +269,7 @@ describe('admin & verification', () => {
   });
 
   it('is disabled entirely when the admin token is weak', async () => {
-    const app = createApp({ config: { ...config, ADMIN_TOKEN: 'short' }, db: pool, ai: teacherAI, voice: new NoVoiceProvider(), geocoder, speech: new SpeechSigner() });
+    const app = createApp({ config: { ...config, ADMIN_TOKEN: 'short' }, db: pool, ai: teacherAI, voice: new NoVoiceProvider(), geocoder, summaries: new SummaryStore() });
     expect((await request(app).get('/api/admin/organisations').set('authorization', 'Bearer short')).status).toBe(503);
   });
 

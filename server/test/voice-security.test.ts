@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SpeechSigner } from '../src/middleware/security.js';
+import { SummaryStore } from '../src/ai/summaryStore.js';
+import { FakeAI } from './helpers.js';
 import { approximate } from '../src/geo/location.js';
 import { ElevenLabsVoice } from '../src/voice/elevenlabs.js';
 import { NoVoiceProvider, VoiceUnavailableError } from '../src/voice/provider.js';
@@ -19,7 +20,7 @@ describe('ElevenLabs voice provider', () => {
   it('maps upstream failures to VoiceUnavailableError without leaking the body', async () => {
     const fetchImpl = vi.fn(async () => new Response('{"detail":"account secret info"}', { status: 401 }));
     const v = new ElevenLabsVoice({ ...opts, fetchImpl: fetchImpl as unknown as typeof fetch });
-    await expect(v.synthesize('hi')).rejects.toThrow(new VoiceUnavailableError('ElevenLabs HTTP 401'));
+    await expect(v.synthesizeStream('hi')).rejects.toThrow(new VoiceUnavailableError('ElevenLabs HTTP 401'));
   });
 
   it('network errors are VoiceUnavailableError', async () => {
@@ -34,15 +35,27 @@ describe('ElevenLabs voice provider', () => {
   });
 });
 
-describe('speech tokens', () => {
-  const s = new SpeechSigner(Buffer.alloc(32, 1), 1000);
-  it('verifies server-issued text only', () => {
-    const t = s.sign('hello', 0);
-    expect(s.verify('hello', t, 500)).toBe(true);
-    expect(s.verify('hello!', t, 500)).toBe(false);
+describe('summary store', () => {
+  const facts = [{ organisation: 'A', title: 'T', distance_km: 1, minutes: '60-120', reasons: [], demo: true }];
+  it('computes once and shares the result', async () => {
+    const ai = new FakeAI(() => JSON.stringify({ summary: 'T at A is close by.' }));
+    const store = new SummaryStore();
+    const id = store.create(facts);
+    const [a, b] = await Promise.all([store.get(id, ai), store.get(id, ai)]);
+    expect(a).toEqual(b);
+    expect(ai.calls).toHaveLength(1);
   });
-  it('expires', () => expect(s.verify('hello', s.sign('hello', 0), 2000)).toBe(false));
-  it('rejects garbage', () => expect(s.verify('hello', 'nope')).toBe(false));
+  it('returns presets without calling the model, and null for unknown or expired ids', async () => {
+    const ai = new FakeAI(() => new Error('no'));
+    const store = new SummaryStore(0);
+    const id = store.create([], { summary: 'x', source: 'fallback_rules' });
+    await new Promise((r) => setTimeout(r, 2));
+    expect(store.get(id, ai)).toBeNull();
+    expect(new SummaryStore().get('nope', ai)).toBeNull();
+    const live = new SummaryStore();
+    expect(await live.get(live.create([], { summary: 'x', source: 'fallback_rules' }), ai)).toEqual({ summary: 'x', source: 'fallback_rules' });
+    expect(ai.calls).toHaveLength(0);
+  });
 });
 
 describe('location privacy', () => {

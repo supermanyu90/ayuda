@@ -63,18 +63,24 @@ const match = (over: Partial<MatchResponse> = {}): MatchResponse => ({
     },
   ],
   near_misses: [],
-  summary: { summary: 'The best fit is a reading circle 0.7 km away.', source: 'gemma', speech_token: 't' },
+  summary_id: 's1',
   ...over,
 });
 
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
 let handler: Handler;
+const SUMMARY = { summary: 'The best fit is a reading circle 0.7 km away.', source: 'gemma' };
+let summaryPending = false;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 beforeEach(() => {
+  summaryPending = false;
   localStorage.clear();
   handler = () => json({}, 404);
-  vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => Promise.resolve(handler(String(url), init))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string, init?: RequestInit) => Promise.resolve<Response>(String(url).includes('/api/summary/') ? (summaryPending ? new Promise<Response>(() => {}) : json(SUMMARY)) : handler(String(url), init))),
+  );
   // Autoplay is not available in jsdom.
   vi.stubGlobal('Audio', class { play = () => Promise.reject(Object.assign(new Error('blocked'), { name: 'NotAllowedError' })); pause() {} });
 });
@@ -209,6 +215,13 @@ describe('results states', () => {
     await userEvent.type(screen.getByLabelText(/or type it here/i), 'I can help on Sunday');
     await userEvent.click(screen.getByRole('button', { name: /find ways to help/i }));
   }
+
+  it('shows result cards immediately while the summary is still being written', async () => {
+    summaryPending = true;
+    await search(match());
+    expect(await screen.findByRole('link', { name: 'Sunday spoken-English circle' })).toBeInTheDocument();
+    expect(screen.getByText(/writing a short summary/i)).toBeInTheDocument();
+  });
 
   it('zero results shows near misses and a wider-radius action', async () => {
     await search(match({ matches: [], near_misses: [{ opportunity_id: 'x', title: 'Weekend homework helper', organisation_name: 'Khar Hub (Demo)', distance_km: 1.5, reason: 'needs at least 90 minutes' }] }));

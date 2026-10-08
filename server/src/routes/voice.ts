@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
@@ -13,7 +14,7 @@ const upload = multer({
   fileFilter: (_req, file, cb) => cb(null, ALLOWED_AUDIO.includes(file.mimetype.split(';')[0]!)),
 });
 
-export function voiceRoutes({ voice, speech }: Deps): Router {
+export function voiceRoutes({ voice, ai, summaries }: Deps): Router {
   const r = Router();
 
   r.post('/transcribe', limiter(10), upload.single('audio'), async (req, res) => {
@@ -34,19 +35,30 @@ export function voiceRoutes({ voice, speech }: Deps): Router {
     res.json({ text: text.slice(0, 600), language });
   });
 
-  // Only speaks summaries this server produced (speech_token from /api/match).
-  r.post('/speak', limiter(10), async (req, res) => {
-    const { text, token } = z.object({ text: z.string().min(1).max(400), token: z.string().max(200) }).strict().parse(req.body);
-    if (!speech.verify(text, token)) {
-      res.status(403).json({ error: 'invalid_speech_token' });
+  // Speaks only a summary this server produced for a recent search (random id, no client text),
+  // streamed so the browser starts playing on the first chunk.
+  r.get('/speak/:id', limiter(10), async (req, res) => {
+    const pending = summaries.get(z.uuid().parse(req.params.id), ai);
+    if (!pending) {
+      res.status(404).json({ error: 'not_found' });
       return;
     }
     if (!voice.configured) {
       res.status(503).json({ error: 'voice_unavailable', message: 'Spoken replies are unavailable; the text is shown instead.' });
       return;
     }
-    const audio = await voice.synthesize(text);
-    res.set({ 'content-type': 'audio/mpeg', 'cache-control': 'no-store' }).send(audio);
+    const { summary } = await pending;
+    const audio = await voice.synthesizeStream(summary);
+    res.set({
+      'content-type': 'audio/mpeg',
+      'cache-control': 'no-store',
+      // The web app may be on another origin (Render static site) and plays this via <audio>.
+      'cross-origin-resource-policy': 'cross-origin',
+    });
+    const body = Readable.fromWeb(audio as import('node:stream/web').ReadableStream<Uint8Array>);
+    body.on('error', () => res.destroy());
+    req.on('close', () => body.destroy());
+    body.pipe(res);
   });
 
   return r;

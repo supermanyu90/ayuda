@@ -1,4 +1,4 @@
-import type { MatchResponse, OpportunityDetail, Place, PublicConfig, VolunteerAction } from './types';
+import type { MatchResponse, OpportunityDetail, Place, PublicConfig, Summary, VolunteerAction } from './types';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
@@ -58,7 +58,9 @@ export const api = {
     form.append('audio', audio, 'request.webm');
     return call<{ text: string; language: string | null }>('/api/voice/transcribe', { method: 'POST', body: form });
   },
-  speak: (text: string, token: string) => call<Blob>('/api/voice/speak', { method: 'POST', body: json({ text, token }) }),
+  summary: (id: string) => call<Summary>(`/api/summary/${encodeURIComponent(id)}`),
+  /** Streaming MP3 URL for an <audio> element: playback starts on the first chunk. */
+  speechUrl: (summaryId: string) => `${BASE}/api/voice/speak/${encodeURIComponent(summaryId)}`,
 
   volunteerSession: () => call<{ token: string }>('/api/volunteer/session', { method: 'POST' }),
   actions: (token: string) => call<{ actions: VolunteerAction[]; completed_minutes: number }>('/api/volunteer/actions', { token }),

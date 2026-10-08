@@ -63,7 +63,14 @@ export interface MatchResponse {
   excluded: number;
   matches: MatchCard[];
   near_misses: NearMiss[];
-  summary?: { summary: string; source: 'gemma' | 'fallback_rules'; fallback_reason?: string; speech_token: string };
+  /** Fetch with api.summary(); absent for the quick "30 minutes" search. */
+  summary_id?: string;
+}
+
+export interface Summary {
+  summary: string;
+  source: 'gemma' | 'fallback_rules';
+  fallback_reason?: string;
 }
 
 export interface OpportunityDetail extends Omit<MatchCard, 'score' | 'reasons' | 'missing_requirements' | 'caveats' | 'distance_km'> {

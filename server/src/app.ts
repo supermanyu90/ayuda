@@ -10,7 +10,8 @@ import type { Db } from './db/pool.js';
 import { UserTextSchema } from './domain/schemas.js';
 import { DEFAULT_RADIUS_KM, RADII_KM } from './domain/taxonomy.js';
 import { GeocoderUnavailableError, type Geocoder } from './geo/geocoder.js';
-import { SpeechSigner, limiter } from './middleware/security.js';
+import type { SummaryStore } from './ai/summaryStore.js';
+import { limiter } from './middleware/security.js';
 import { adminRoutes } from './routes/admin.js';
 import { discoveryRoutes } from './routes/discovery.js';
 import { voiceRoutes } from './routes/voice.js';
@@ -23,7 +24,7 @@ export interface Deps {
   ai: AIProvider;
   voice: VoiceProvider;
   geocoder: Geocoder;
-  speech: SpeechSigner;
+  summaries: SummaryStore;
 }
 
 export function createApp(deps: Deps) {

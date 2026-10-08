@@ -5,7 +5,7 @@ import { OpportunityCard } from '../components/OpportunityCard';
 import { Alert, Button, ButtonLink, Card, Chip, PageTitle, Spinner, pretty } from '../components/ui';
 import { api, ApiError } from '../lib/api';
 import { useApp, useSearchLocation } from '../lib/state';
-import type { IntentResult, MatchResponse } from '../lib/types';
+import type { IntentResult, Summary } from '../lib/types';
 
 /** Technical details (model, latency, guards, raw JSON) are for judges/evaluators, so they appear only in Demo Mode. */
 function IntentPanel({ intent, text, technical }: { intent: IntentResult; text: string | null; technical: boolean }) {
@@ -49,49 +49,59 @@ function IntentPanel({ intent, text, technical }: { intent: IntentResult; text: 
   );
 }
 
-function SpokenSummary({ summary }: { summary: NonNullable<MatchResponse['summary']> }) {
+function SpokenSummary({ summaryId }: { summaryId: string }) {
   const { config, settings } = useApp();
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [failed, setFailed] = useState(false);
   const [state, setState] = useState<'idle' | 'loading' | 'playing' | 'error'>('idle');
   const audio = useRef<HTMLAudioElement | null>(null);
   const canSpeak = (config?.voice.available ?? false) && settings.voiceReplies;
 
-  const play = useCallback(async () => {
+  const play = useCallback(() => {
+    audio.current?.pause();
+    const a = new Audio(api.speechUrl(summaryId));
+    audio.current = a;
     setState('loading');
-    try {
-      const blob = await api.speak(summary.summary, summary.speech_token);
-      const url = URL.createObjectURL(blob);
-      audio.current?.pause();
-      audio.current = new Audio(url);
-      audio.current.onended = () => {
-        URL.revokeObjectURL(url);
-        setState('idle');
-      };
-      await audio.current.play();
-      setState('playing');
-    } catch (err) {
-      // Autoplay blocked, or playback interrupted by navigation, is not a voice failure:
-      // just offer the Play button. Only an API failure means voice is unavailable.
-      setState(err instanceof ApiError ? 'error' : 'idle');
-    }
-  }, [summary]);
+    a.onplaying = () => setState('playing');
+    a.onended = () => setState('idle');
+    a.onerror = () => setState('error');
+    // Autoplay blocked or interrupted is not a voice failure: just offer the Play button.
+    a.play().catch(() => setState((s) => (s === 'error' ? s : 'idle')));
+  }, [summaryId]);
 
+  // Start the (streamed) speech and the text summary at the same time: both use the same server-side summary.
   useEffect(() => {
-    if (canSpeak) void play();
-    return () => audio.current?.pause();
-  }, [canSpeak, play]);
+    let live = true;
+    setSummary(null);
+    setFailed(false);
+    if (canSpeak) play();
+    api.summary(summaryId).then(
+      (s) => live && setSummary(s),
+      () => live && setFailed(true),
+    );
+    return () => {
+      live = false;
+      audio.current?.pause();
+    };
+  }, [summaryId, canSpeak, play]);
 
+  if (failed) return null;
   return (
     <Card className="border-forest/40 bg-forest-soft">
-      <p className="text-xl font-bold leading-snug" aria-live="polite">
-        {summary.summary}
-      </p>
+      {summary ? (
+        <p className="text-xl font-bold leading-snug" aria-live="polite">
+          {summary.summary}
+        </p>
+      ) : (
+        <Spinner label="Writing a short summary…" />
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
-        <span>{summary.source === 'gemma' ? 'Summary written by Gemma from the verified facts below' : 'Summary from verified facts'}</span>
+        {summary && <span>{summary.source === 'gemma' ? 'Summary written by Gemma from the verified facts below' : 'Summary from verified facts'}</span>}
         {canSpeak && (
           <Button
             variant="ghost"
             className="min-h-10 px-2 py-1 text-sm"
-            onClick={() => (state === 'playing' ? (audio.current?.pause(), setState('idle')) : void play())}
+            onClick={() => (state === 'playing' ? (audio.current?.pause(), setState('idle')) : play())}
             disabled={state === 'loading'}
           >
             {state === 'playing' ? '⏸ Stop' : state === 'loading' ? 'Loading voice…' : '🔊 Play aloud'}
@@ -188,7 +198,7 @@ export function Results() {
 
       {results && !loading && (
         <div className="flex flex-col gap-4">
-          {results.summary && <SpokenSummary summary={results.summary} />}
+          {results.summary_id && <SpokenSummary summaryId={results.summary_id} />}
           <IntentPanel intent={results.intent} text={request.kind === 'text' ? request.text : null} technical={results.demo} />
 
           {results.intent.understood === false ? (
