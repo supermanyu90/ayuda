@@ -7,7 +7,8 @@ import { api, ApiError } from '../lib/api';
 import { useApp, useSearchLocation } from '../lib/state';
 import type { IntentResult, MatchResponse } from '../lib/types';
 
-function IntentPanel({ intent, text }: { intent: IntentResult; text: string | null }) {
+/** Technical details (model, latency, guards, raw JSON) are for judges/evaluators, so they appear only in Demo Mode. */
+function IntentPanel({ intent, text, technical }: { intent: IntentResult; text: string | null; technical: boolean }) {
   const i = intent.intent;
   const chips = [
     i.availability.day && `on ${i.availability.day}`,
@@ -29,17 +30,21 @@ function IntentPanel({ intent, text }: { intent: IntentResult; text: string | nu
       <h2 className="text-lg font-bold text-forest">What Ayuda understood</h2>
       {text && <p className="mt-1 text-muted">“{text}”</p>}
       <p className="mt-3 flex flex-wrap gap-1.5">{chips.length ? chips.map((c) => <Chip key={c}>{c}</Chip>) : <span className="text-muted">Anything nearby</span>}</p>
-      <p className="mt-3 text-sm text-muted">{sourceLabel}</p>
-      {(intent.corrected_fields?.length ?? 0) > 0 && (
-        <p className="text-sm text-muted">Checked by rules: {intent.corrected_fields!.map(pretty).join(', ')}</p>
+      {technical && (
+        <>
+          <p className="mt-3 text-sm text-muted">{sourceLabel}</p>
+          {(intent.corrected_fields?.length ?? 0) > 0 && (
+            <p className="text-sm text-muted">Checked by rules: {intent.corrected_fields!.map(pretty).join(', ')}</p>
+          )}
+          {(intent.dropped_fields?.length ?? 0) > 0 && (
+            <p className="text-sm text-muted">Ignored (you didn't mention it): {intent.dropped_fields!.map((f) => pretty(f.replace('availability.', ''))).join(', ')}</p>
+          )}
+          <details className="mt-3">
+            <summary className="cursor-pointer font-bold text-forest">Show structured intent (JSON)</summary>
+            <pre className="mt-2 overflow-x-auto rounded-xl bg-paper p-3 text-sm">{JSON.stringify(i, null, 2)}</pre>
+          </details>
+        </>
       )}
-      {(intent.dropped_fields?.length ?? 0) > 0 && (
-        <p className="text-sm text-muted">Ignored (you didn't mention it): {intent.dropped_fields!.map((f) => pretty(f.replace('availability.', ''))).join(', ')}</p>
-      )}
-      <details className="mt-3">
-        <summary className="cursor-pointer font-bold text-forest">Show structured intent (JSON)</summary>
-        <pre className="mt-2 overflow-x-auto rounded-xl bg-paper p-3 text-sm">{JSON.stringify(i, null, 2)}</pre>
-      </details>
     </Card>
   );
 }
@@ -184,7 +189,7 @@ export function Results() {
       {results && !loading && (
         <div className="flex flex-col gap-4">
           {results.summary && <SpokenSummary summary={results.summary} />}
-          <IntentPanel intent={results.intent} text={request.kind === 'text' ? request.text : null} />
+          <IntentPanel intent={results.intent} text={request.kind === 'text' ? request.text : null} technical={results.demo} />
 
           {results.intent.understood === false ? (
             <ButtonLink to="/tell">Try saying it another way</ButtonLink>

@@ -100,7 +100,7 @@ npm run dev:web                    # app on http://localhost:5173
 
 ## Demo Mode
 
-Demo Mode is on by default and labelled everywhere: a purple banner, a "Demo · fictional" badge on every card, and a warning on the exit screen. It uses a fixed demo location, so it works from anywhere. Matching is deterministic. Gemma runs for real when it is available. If it isn't, the labelled keyword fallback keeps the whole flow working, including with no AI and no voice at all (`GEMMA_PROVIDER=off`, no ElevenLabs key).
+Demo Mode is the evaluator view. Only in Demo Mode does the results screen show the technical evidence: the model name and latency, the fields the guards corrected or dropped, and the raw structured-intent JSON. Real users see only the plain-language chips. Demo Mode is on by default and labelled everywhere: a purple banner, a "Demo · fictional" badge on every card, and a warning on the exit screen. It uses a fixed demo location, so it works from anywhere. Matching is deterministic. Gemma runs for real when it is available. If it isn't, the labelled keyword fallback keeps the whole flow working, including with no AI and no voice at all (`GEMMA_PROVIDER=off`, no ElevenLabs key).
 
 ### 90-second demo script
 1. Open Ayuda and tap **🎙 Tell Ayuda How You Can Help**.

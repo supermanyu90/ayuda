@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup as cleanupAll, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -221,6 +221,17 @@ describe('results states', () => {
     const r = match();
     await search({ ...r, intent: { ...r.intent, source: 'fallback_rules', model: null, fallback_reason: 'Gemma is unavailable' } });
     expect(await screen.findByText(/basic keyword matching \(gemma is unavailable\)/i)).toBeInTheDocument();
+  });
+
+  it('shows the structured-intent JSON and model details only in Demo Mode', async () => {
+    await search(match());
+    expect(await screen.findByText(/show structured intent \(json\)/i)).toBeInTheDocument();
+    cleanupAll();
+    await search(match({ demo: false }));
+    expect(await screen.findByText(/what ayuda understood/i)).toBeInTheDocument();
+    expect(screen.getByText('helping children')).toBeInTheDocument();
+    expect(screen.queryByText(/show structured intent/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/understood by gemma3:4b/i)).not.toBeInTheDocument();
   });
 
   it('asks to rephrase when the request was not understood', async () => {
