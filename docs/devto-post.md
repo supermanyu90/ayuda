@@ -5,7 +5,7 @@ tags: devchallenge, hf26challenge, ai, opensource
 cover_image: <!-- TODO: upload a screenshot of the "You're ready to help" screen -->
 ---
 
-*This is a submission for the [Hacktoberfest Open-Source AI Challenge, Week 1: Touch Grass](https://dev.to/challenges/hacktoberfest-week1-2026-10-05).*
+*This is a submission for the [Hacktoberfest Open-Source AI Challenge Week 1: Touch Grass](https://dev.to/challenges/hacktoberfest-week1-2026-10-05)*
 
 ## What I Built
 
@@ -38,11 +38,16 @@ Every interactive piece is there to get you out faster, not to keep you in:
 
 There's no feed, no streak and no notification nagging you to come back. The last screen has three things on it: directions, a phone number, and what to expect when you arrive (safeguarding notes, minimum age, what to wear). Then it says *"Your next step is outside the app."*
 
+**Who it's for:**
+- **People with time, not money.** Students, retirees, anyone with a free Saturday who has been put off by "donate now" buttons. Ayuda never asks for money, and you can say so: *"I don't want to donate"* filters out anything that needs it.
+- **People who don't want to fill in forms.** You can speak in English, Hindi or Spanish, tap five chips, or type one sentence.
+- **Small community organisations** (elder homes, animal shelters, community kitchens) that need people on specific days but can't afford volunteer-management software. An admin pastes in their own description, Gemma suggests a structured listing, and a human reviews it before anything goes live.
+
 ## Demo
 
 <!-- Pick one: deployed link or video. A 60–90 s screen recording with sound is the most convincing, because judges can hear the voice. -->
 
-{% embed TODO-video-or-deployed-url %}
+[[TODO: replace this line with a DEV embed tag for your video URL]]
 
 What the demo shows:
 1. Tap 🎙 and say the sentence above. ElevenLabs transcribes it.
@@ -62,6 +67,19 @@ The demo uses a clearly labelled set of **fictional** organisations around Bandr
 React + Vite + Tailwind on the front end, Node/Express + TypeScript on the back end, PostgreSQL + PostGIS, Gemma 3 4B through Ollama, ElevenLabs for speech. MIT licensed. **112 tests** (83 server, 29 web), including integration tests against a real PostGIS database.
 
 ## How I Built It
+
+### The open-source AI and stack
+
+| Piece | What it does in Ayuda |
+|---|---|
+| **Gemma 3 4B** (open weights) | Turns a spoken or typed request into structured JSON; suggests structured listings from an NGO's description; writes the two-sentence summary |
+| **Ollama** (local inference) | Runs Gemma on my laptop, using JSON-schema constrained decoding, so requests are understood on-device |
+| **PostgreSQL + PostGIS** | The single source of truth for organisations; all distance and radius search happens here |
+| **OpenStreetMap, Leaflet, Nominatim** | Open map tiles, the map view, and "search by PIN code or landmark" |
+| **Zod, Express, React, Vite, Tailwind** | Strict validation of every model output, the API and the UI |
+| ElevenLabs (the one closed piece) | Speech-to-text and streaming text-to-speech. It's optional: typing or tapping keeps the whole AI path local |
+
+Gemma sits behind a small `AIProvider` interface. The same code runs against local Ollama or any OpenAI-compatible server hosting Gemma, and with `GEMMA_PROVIDER=off` it falls back to a deterministic keyword parser that the UI labels honestly.
 
 ### The rule I started with: the model never decides facts
 
@@ -112,22 +130,38 @@ So I split it. Results now render as soon as matching finishes (6.5 s → **4.6 
 
 Everything works with the keyboard and a screen reader. There's a full text fallback, a high-contrast mode, larger text, reduced motion and visible focus. Microphone or location permission denials explain themselves and move focus to the text alternative. The body font is Atkinson Hyperlegible, which was designed for low-vision readers.
 
-## Why Open Innovation Matters
+## Why Does Open Innovation Matter?
 
-For this project, open weights weren't a nice-to-have. They're what made the design possible:
+For Ayuda, open weights weren't a nice-to-have. They made four things possible that a closed API wouldn't have:
 
-- **Privacy by architecture, not by policy.** "I'm free on Sunday, I can help kids, I live near here" is personal. With Gemma running locally, the sentence that reveals all of that never has to leave a machine you control.
-- **When it was wrong, I could see why and fix it.** The three failures above were reproducible, measurable and fixable in code I can show you. That loop (eval, guard, re-eval) is what open models make normal.
-- **It can belong to a community.** The prompt contract doubles as a LoRA/QLoRA training format. A city's volunteer network could fine-tune Ayuda for Marathi requests or its own causes, without asking anyone's permission.
-- **It's cheap enough to give away.** A 4B model runs on a laptop. Volunteering infrastructure shouldn't need a per-token budget.
+**1. Privacy by architecture, not by promise.**
+*"I'm free on Sunday morning, I can help kids, I live near Bandra"* is a surprisingly personal sentence. It says when you're out, where you are, and who you'd be around. With a closed API, that sentence goes to someone else's servers under someone else's retention policy. Because Gemma 3 4B runs locally through Ollama, it's understood on hardware I control. Your location never reaches the model at all: it's rounded to about 100 m and used only by the database. To be honest about the one exception: voice uses ElevenLabs. Typing or tapping keeps the whole AI path local.
 
-And Ayuda's goal is the most open one I can think of: get people offline, together, and doing something for each other.
+**2. When the model was wrong, I could see why, fix it, and prove the fix.**
+My first live evaluation scored 9/12. With an open model pinned to a specific version, each failure was reproducible, so I could write a guard and re-run the exact same eval to get 12/12. A closed API can change underneath you, and an eval you ran last week may not describe the model you're calling today. Here, anyone can clone the repo, run `npm run eval:gemma`, and check the claim instead of trusting it.
+
+**3. It can belong to the community it serves.**
+A volunteer network in Pune doesn't need English-first AI. It needs something that understands *"kal shaam ek ghanta hai"* ("I have an hour tomorrow evening"). Ayuda's prompt contract doubles as a LoRA/QLoRA training format, so a local group could fine-tune it for Marathi or for their own causes, and own the result. With a closed API they could only ask for that feature.
+
+**4. It's cheap enough to give away.**
+A 4B model runs on a laptop. Volunteering tools are usually run by small NGOs with no budget, and they shouldn't depend on per-token pricing staying generous, or on an API key that can be revoked.
+
+And the goal itself is open. Most software competes for your attention. Ayuda is MIT-licensed and built to be closed: its success metric is minutes in the real world per minute on screen. Open models mean anyone can take that idea, run it themselves, and make it better.
+
+## My Agent Session
+
+<!-- Optional, but judges love it. Save the Claude Code session with DevRelay and embed it with the agent_session tag (see the challenge page for the exact syntax), or link to it. -->
+
+I built Ayuda with Claude Code as a pair programmer, starting from a written product brief. The session shows the parts I think matter most: the first 9/12 Gemma eval and the guards that fixed it, catching the "hour's drive" hallucination, and profiling the voice latency before changing anything.
+
+[[TODO: paste the DevRelay agent_session embed or link here, or delete this section]]
 
 ## Prize Categories
 
-<!-- Only keep the ones you actually use. -->
-- **Gemma**: Gemma 3 4B is the core language layer (intent extraction, organisation-need extraction, grounded summaries), with a live eval.
-- **ElevenLabs**: server-side speech-to-text (Scribe) and streaming text-to-speech for the spoken summary.
-- <!-- **Render**: only if deployed on Render (render.yaml is in the repo) -->
+<!-- List every one that applies. Only add Render or DigitalOcean if the app is actually deployed there. -->
+- **Gemma**: Gemma 3 4B is the core language layer (request understanding, organisation-need suggestions, grounded summaries), measured with a live 12-case eval.
+- **ElevenLabs**: server-side speech-to-text (Scribe) for voice requests, and streaming text-to-speech for the spoken summary.
 
-<!-- Team submissions: credit teammates here by DEV username. -->
+<!-- Team Submissions: Please pick one member to publish the submission and credit teammates by listing their DEV usernames directly in the body of the post. -->
+
+<!-- Thanks for participating! -->
