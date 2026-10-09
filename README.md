@@ -11,6 +11,14 @@ Built for the [DEV Hacktoberfest Open-Source AI Challenge, Week 1: *Touch Grass*
 
 ---
 
+## Designed to be put down
+
+- **Tap-to-build requests**: chips for duration, day, who and skills compose the sentence in a few taps. It goes through the same Gemma pipeline as voice.
+- **Screen-time meter** (visible-tab time only) on the planning screens, against the promise of *a plan in under 2 minutes*, with a gentle nudge at 5 minutes.
+- **Quotes about helping**, shown at natural pauses only, with sourced attributions (`web/src/lib/quotes.ts`).
+- **"I'm putting my phone down"**: a calm full-screen send-off. Grass grows on the exit screen in proportion to your world-to-screen ratio.
+- All motion respects `prefers-reduced-motion` and the in-app *Reduce motion* setting.
+
 ## Architecture
 
 ```
@@ -118,7 +126,7 @@ Demo Mode is the evaluator view. Only in Demo Mode does the results screen show 
 ## Testing
 
 ```bash
-npm test                         # server (83) + web (22)
+npm test                         # server (83) + web (29)
 npm run typecheck && npm run build
 npm run eval:gemma -w server     # live Gemma 3 4B evaluation (real model, no mocks)
 ```

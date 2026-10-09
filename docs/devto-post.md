@@ -29,6 +29,13 @@ Ayuda measures it. The app counts only the time its tab is actually visible, fro
 
 <!-- TODO: replace the [[...]] numbers with the ones from your own demo run -->
 
+Every interactive piece is there to get you out faster, not to keep you in:
+
+- **Tap to build your request.** Chips for *how long*, *when*, *who* and *what you can do* write the sentence for you in four or five taps. It's faster than typing, and it feeds the same Gemma pipeline as voice.
+- **A screen-time meter while you plan,** next to Ayuda's promise: *a plan in under 2 minutes*. After 5 minutes it nudges you: *the perfect match can wait; the people who need help can't.*
+- **Quotes about helping** appear at natural pauses: while Gemma thinks, on the final screen, and when you mark a session done. I only used quotes with documented sources (MLK, Anne Frank, Helen Keller, Swami Vivekananda), because kindness quotes are often misattributed online.
+- **"I'm putting my phone down"** turns the screen into a calm green page that just says *See you out there.* Below it, a strip of grass grows. The better your world-to-screen ratio, the more grass you get. Literally touching grass.
+
 There's no feed, no streak and no notification nagging you to come back. The last screen has three things on it: directions, a phone number, and what to expect when you arrive (safeguarding notes, minimum age, what to wear). Then it says *"Your next step is outside the app."*
 
 ## Demo
@@ -52,7 +59,7 @@ The demo uses a clearly labelled set of **fictional** organisations around Bandr
 
 <!-- The repo must be public for this embed to work. -->
 
-React + Vite + Tailwind on the front end, Node/Express + TypeScript on the back end, PostgreSQL + PostGIS, Gemma 3 4B through Ollama, ElevenLabs for speech. MIT licensed. **105 tests** (83 server, 22 web), including integration tests against a real PostGIS database.
+React + Vite + Tailwind on the front end, Node/Express + TypeScript on the back end, PostgreSQL + PostGIS, Gemma 3 4B through Ollama, ElevenLabs for speech. MIT licensed. **112 tests** (83 server, 29 web), including integration tests against a real PostGIS database.
 
 ## How I Built It
 

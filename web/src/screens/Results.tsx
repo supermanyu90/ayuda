@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { MapView } from '../components/MapView';
 import { OpportunityCard } from '../components/OpportunityCard';
+import { QuoteCard } from '../components/QuoteCard';
+import { quoteFor } from '../lib/quotes';
 import { Alert, Button, ButtonLink, Card, Chip, PageTitle, Spinner, pretty } from '../components/ui';
 import { api, ApiError } from '../lib/api';
 import { useApp, useSearchLocation } from '../lib/state';
@@ -66,7 +68,10 @@ function SpokenSummary({ summaryId }: { summaryId: string }) {
     a.onended = () => setState('idle');
     a.onerror = () => setState('error');
     // Autoplay blocked or interrupted is not a voice failure: just offer the Play button.
-    a.play().catch(() => setState((s) => (s === 'error' ? s : 'idle')));
+    // Promise.resolve: some environments return undefined from play() instead of a promise.
+    Promise.resolve()
+      .then(() => a.play())
+      .catch(() => setState((s) => (s === 'error' ? s : 'idle')));
   }, [summaryId]);
 
   // Start the (streamed) speech and the text summary at the same time: both use the same server-side summary.
@@ -183,9 +188,12 @@ export function Results() {
       </fieldset>
 
       {loading && (
-        <Card>
-          <Spinner label={request.kind === 'text' ? 'Understanding your request with Gemma and searching nearby…' : 'Searching nearby…'} />
-        </Card>
+        <div className="flex flex-col gap-4">
+          <Card>
+            <Spinner label={request.kind === 'text' ? 'Understanding your request with Gemma and searching nearby…' : 'Searching nearby…'} />
+          </Card>
+          <QuoteCard quote={quoteFor(request.kind === 'text' ? request.text : 'quick')} />
+        </div>
       )}
       {error && (
         <div className="flex flex-col gap-3">
@@ -263,7 +271,7 @@ export function Results() {
                 </div>
               </div>
               {view === 'map' && <MapView centre={where} radiusKm={radius} matches={results.matches} onSelect={select} />}
-              <ol className="flex flex-col gap-3">
+              <ol className="stagger flex flex-col gap-3">
                 {results.matches.map((m, i) => (
                   <li key={m.opportunity_id}>
                     <OpportunityCard m={m} rank={i + 1} />

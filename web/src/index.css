@@ -98,3 +98,56 @@ h3 {
   font-family: var(--font-sans);
   border-radius: 1rem;
 }
+
+/* ---- Purposeful motion (all disabled by reduced-motion rules above) ---- */
+@keyframes ayuda-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.rise-in {
+  animation: ayuda-rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stagger > * {
+  animation: ayuda-rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stagger > *:nth-child(2) { animation-delay: 70ms; }
+.stagger > *:nth-child(3) { animation-delay: 140ms; }
+.stagger > *:nth-child(4) { animation-delay: 210ms; }
+.stagger > *:nth-child(5) { animation-delay: 280ms; }
+
+/* Tactile press feedback on buttons and chips. */
+button:not(:disabled):active,
+a[class*='rounded']:active {
+  transform: scale(0.97);
+}
+button,
+a {
+  transition: transform 120ms ease, background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+/* "Touch grass": blades grow from the bottom of the Go screen. */
+@keyframes ayuda-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes ayuda-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+.grass-blade {
+  transform-origin: bottom center;
+  transform-box: fill-box;
+  animation: ayuda-grow 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.grass-sway {
+  transform-origin: bottom center;
+  transform-box: fill-box;
+  animation: ayuda-sway 4s ease-in-out infinite;
+}
+
+/* Page titles receive programmatic focus on navigation (for screen readers); no visible ring needed. */
+h1[tabindex='-1']:focus,
+h1[tabindex='-1']:focus-visible {
+  outline: none;
+  box-shadow: none;
+}

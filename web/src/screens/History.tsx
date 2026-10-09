@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { QuoteCard } from '../components/QuoteCard';
 import { Alert, Button, ButtonLink, Card, DemoBadge, PageTitle, Spinner } from '../components/ui';
+import { quoteFor } from '../lib/quotes';
 import { api, ApiError } from '../lib/api';
 import { readJSON } from '../lib/storage';
 import type { VolunteerAction } from '../lib/types';
@@ -14,6 +16,7 @@ export function History() {
     world_minutes_per_screen_minute: number | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [thanks, setThanks] = useState<{ id: string; minutes: number } | null>(null);
 
   const load = () => {
     if (!token) return;
@@ -21,9 +24,10 @@ export function History() {
   };
   useEffect(load, [token]);
 
-  async function mark(id: string, status: 'completed' | 'cancelled') {
+  async function mark(id: string, status: 'completed' | 'cancelled', minutes: number) {
     try {
       await api.setActionStatus(token!, id, status);
+      setThanks(status === 'completed' ? { id, minutes } : null);
       load();
     } catch (e) {
       setError((e as Error).message);
@@ -45,6 +49,14 @@ export function History() {
         <Spinner label="Loading…" />
       ) : (
         <>
+          {thanks && (
+            <div className="rise-in mb-4 flex flex-col gap-3" role="status">
+              <p className="rounded-3xl bg-marigold-soft px-5 py-4 text-xl font-bold">
+                <span aria-hidden>🌱 </span>Thank you. That's {thanks.minutes} minutes of your life given to someone else.
+              </p>
+              <QuoteCard quote={quoteFor(thanks.id)} />
+            </div>
+          )}
           <Card className="mb-4 border-forest bg-forest-soft">
             <p className="text-sm font-bold text-muted">Time given in the real world</p>
             <p className="font-display text-5xl font-extrabold text-forest">
@@ -78,8 +90,8 @@ export function History() {
                   </p>
                   {a.status === 'committed' && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button onClick={() => mark(a.id, 'completed')}>I did it</Button>
-                      <Button variant="ghost" onClick={() => mark(a.id, 'cancelled')}>
+                      <Button onClick={() => mark(a.id, 'completed', a.planned_minutes)}>I did it</Button>
+                      <Button variant="ghost" onClick={() => mark(a.id, 'cancelled', a.planned_minutes)}>
                         Couldn't make it
                       </Button>
                     </div>

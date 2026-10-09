@@ -1,4 +1,9 @@
+import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { GrassField } from '../components/GrassField';
+import { PhoneDown } from '../components/PhoneDown';
+import { QuoteCard } from '../components/QuoteCard';
+import { quoteFor } from '../lib/quotes';
 import { formatDuration } from '../lib/screenTime';
 import { Alert, Card, DemoBadge, PageTitle, Spinner, buttonStyles } from '../components/ui';
 import { useOpportunity } from '../lib/useOpportunity';
@@ -8,6 +13,7 @@ export function Go() {
   const { id } = useParams();
   const { data: o, error } = useOpportunity(id);
   const plan = useLocation().state as { planned?: number; onScreen?: number } | null;
+  const [phoneDown, setPhoneDown] = useState(false);
   if (error) return <Alert tone="error">{error}</Alert>;
   if (!o) return <Spinner label="Loading…" />;
   if (!o.contact) return <Alert tone="warn">Contact details are only shared for verified organisations.</Alert>;
@@ -16,6 +22,8 @@ export function Go() {
   const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
   const osm = `https://www.openstreetmap.org/directions?to=${encodeURIComponent(dest)}`;
   const tel = o.contact.contact_phone?.replace(/[^\d+]/g, '');
+  const ratio = plan?.planned && plan.onScreen ? (plan.planned * 60) / plan.onScreen : null;
+  const quote = quoteFor(o.opportunity_id);
 
   return (
     <>
@@ -90,13 +98,32 @@ export function Go() {
         </a>
       </div>
 
-      <p className="mt-10 text-center text-lg text-muted">
-        That's all. Put your phone away. When you're back, you can{' '}
-        <Link to="/history" className="font-bold text-forest underline">
-          mark it done
-        </Link>
-        .
-      </p>
+      <div className="mt-10">
+        <QuoteCard quote={quote} tone="forest" />
+      </div>
+
+      <div className="mt-6 flex flex-col items-center gap-3 text-center">
+        <button
+          type="button"
+          onClick={() => setPhoneDown(true)}
+          className="min-h-14 rounded-2xl bg-forest px-6 text-lg font-bold text-white hover:bg-[#0f2c22]"
+        >
+          📵 I'm putting my phone down
+        </button>
+        <p className="text-muted">
+          When you're back, you can{' '}
+          <Link to="/history" className="font-bold text-forest underline">
+            mark it done
+          </Link>
+          .
+        </p>
+      </div>
+
+      <div className="-mx-4 mt-8">
+        <GrassField ratio={ratio} />
+      </div>
+
+      {phoneDown && <PhoneDown quote={quote} onClose={() => setPhoneDown(false)} />}
     </>
   );
 }

@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { QuickBuilder } from '../components/QuickBuilder';
 import { Alert, Button, PageTitle } from '../components/ui';
 import { api, ApiError } from '../lib/api';
 import { MIC_MESSAGES, startRecording, type MicError, type Recording } from '../lib/recorder';
 import { useApp, useSearchLocation } from '../lib/state';
-
-const EXAMPLES = [
-  "I have two hours on Sunday morning. I can teach English and I'd like to help children. I don't want to donate money.",
-  'I have one hour tomorrow evening and can help elderly people with smartphones.',
-  'I love dogs and can spare 90 minutes on Saturday.',
-];
 
 type Phase = 'idle' | 'recording' | 'transcribing';
 
@@ -101,9 +96,21 @@ export function Tell() {
 
       {error && <Alert tone="warn">{error}</Alert>}
 
+      <details className="mt-2 rounded-3xl border border-line bg-card p-5" open={!voiceAvailable}>
+        <summary className="cursor-pointer text-lg font-bold text-forest">Or tap to build it (no typing)</summary>
+        <div className="mt-4">
+          <QuickBuilder
+            onChange={(sentence) => {
+              setText(sentence);
+              setTranscribed(false);
+            }}
+          />
+        </div>
+      </details>
+
       <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
         <label htmlFor="request" className="text-lg font-bold">
-          {transcribed ? 'Here is what I heard. Edit it if anything is wrong:' : 'Or type it here'}
+          {transcribed ? 'Here is what I heard. Edit it if anything is wrong:' : 'Your request (type or edit)'}
         </label>
         <textarea
           id="request"
@@ -123,20 +130,6 @@ export function Tell() {
         </Button>
       </form>
 
-      <section className="mt-8" aria-labelledby="examples">
-        <h2 id="examples" className="font-bold text-muted">
-          Try an example
-        </h2>
-        <ul className="mt-2 flex flex-col gap-2">
-          {EXAMPLES.map((ex) => (
-            <li key={ex}>
-              <button type="button" className="w-full rounded-2xl border border-line bg-card px-4 py-3 text-left hover:border-forest" onClick={() => setText(ex)}>
-                “{ex}”
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
     </>
   );
 }

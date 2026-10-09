@@ -120,7 +120,7 @@ describe('tell (voice + text)', () => {
     renderAt('/tell', config({ voice: { available: false, provider: 'none' } }));
     expect(screen.getByRole('button', { name: /start recording/i })).toBeDisabled();
     expect(screen.getByText(/voice is not available right now/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/or type it here/i)).toBeEnabled();
+    expect(screen.getByLabelText(/your request/i)).toBeEnabled();
   });
 
   it('explains microphone permission denial and moves focus to the text box', async () => {
@@ -132,7 +132,7 @@ describe('tell (voice + text)', () => {
     renderAt('/tell');
     await userEvent.click(screen.getByRole('button', { name: /start recording/i }));
     expect(await screen.findByText(/microphone access was blocked/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/or type it here/i)).toHaveFocus();
+    expect(screen.getByLabelText(/your request/i)).toHaveFocus();
   });
 
   it('asks for input instead of submitting an empty request', async () => {
@@ -144,7 +144,7 @@ describe('tell (voice + text)', () => {
   it('typed request in demo mode goes straight to results with transcript, intent and matches', async () => {
     handler = (url) => (url.includes('/api/match') ? json(match()) : json({}, 404));
     renderAt('/tell');
-    await userEvent.type(screen.getByLabelText(/or type it here/i), 'I can teach kids on Sunday');
+    await userEvent.type(screen.getByLabelText(/your request/i), 'I can teach kids on Sunday');
     await userEvent.click(screen.getByRole('button', { name: /find ways to help/i }));
     expect(await screen.findByRole('heading', { name: /ways to help near you/i })).toBeInTheDocument();
     expect(await screen.findByText(/the best fit is a reading circle/i)).toBeInTheDocument();
@@ -212,7 +212,7 @@ describe('results states', () => {
   async function search(response: MatchResponse) {
     handler = (url) => (url.includes('/api/match') ? json(response) : json({}, 404));
     renderAt('/tell');
-    await userEvent.type(screen.getByLabelText(/or type it here/i), 'I can help on Sunday');
+    await userEvent.type(screen.getByLabelText(/your request/i), 'I can help on Sunday');
     await userEvent.click(screen.getByRole('button', { name: /find ways to help/i }));
   }
 
@@ -261,7 +261,7 @@ describe('results states', () => {
       return json(match({ search: { radius_km: JSON.parse(String(init?.body)).radius_km, centre_label: 'demo' } }));
     };
     renderAt('/tell');
-    await userEvent.type(screen.getByLabelText(/or type it here/i), 'I can help');
+    await userEvent.type(screen.getByLabelText(/your request/i), 'I can help');
     await userEvent.click(screen.getByRole('button', { name: /find ways to help/i }));
     await screen.findByText(/the best fit/i);
     await userEvent.click(screen.getByRole('radio', { name: '10 km' }));
@@ -272,7 +272,7 @@ describe('results states', () => {
   it('shows an error with retry when the server is down', async () => {
     handler = () => json({ error: 'service_unavailable', message: 'Ayuda is temporarily unavailable. Please try again shortly.' }, 503);
     renderAt('/tell');
-    await userEvent.type(screen.getByLabelText(/or type it here/i), 'I can help');
+    await userEvent.type(screen.getByLabelText(/your request/i), 'I can help');
     await userEvent.click(screen.getByRole('button', { name: /find ways to help/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/temporarily unavailable/i);
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();

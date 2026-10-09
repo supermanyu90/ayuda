@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
+import { QuoteCard } from '../components/QuoteCard';
 import { Button, ButtonLink, Card } from '../components/ui';
+import { quoteFor } from '../lib/quotes';
 import { useApp, useSearchLocation } from '../lib/state';
 
 export function Landing() {
@@ -34,7 +36,13 @@ export function Landing() {
             I Have 30 Minutes
           </Button>
         </div>
-        <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted" aria-label="Service status">
+        <p className="mt-5 flex items-start gap-2 text-lg">
+          <span aria-hidden>⏱</span>
+          <span>
+            <strong>Our promise:</strong> you'll have a plan in under 2 minutes. Then we'll ask you to put your phone away.
+          </span>
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted" aria-label="Service status">
           {configError && <li className="text-danger">Can't reach the Ayuda server.</li>}
           {config && (
             <>
@@ -45,7 +53,11 @@ export function Landing() {
         </ul>
       </section>
 
-      <Card className="mt-10">
+      <div className="mt-10">
+        <QuoteCard quote={quoteFor(new Date().toDateString())} />
+      </div>
+
+      <Card className="mt-4">
         <h2 className="text-xl font-bold text-forest">How it works</h2>
         <ol className="mt-3 grid gap-4 sm:grid-cols-3">
           {[

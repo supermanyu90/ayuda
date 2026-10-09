@@ -1,5 +1,10 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useApp } from '../lib/state';
+import { NUDGE_SECONDS, ScreenMeter, useScreenSeconds } from './ScreenMeter';
+
+/** Screens where someone is still planning; the meter is hidden once they're on their way. */
+const PLANNING = /^\/($|tell|location|results|opportunity)/;
 
 const nav = [
   { to: '/', label: 'Home' },
@@ -10,6 +15,9 @@ const nav = [
 export function Layout() {
   const { demo, setDemo } = useApp();
   const { pathname } = useLocation();
+  const seconds = useScreenSeconds();
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const planning = PLANNING.test(pathname);
   return (
     <div className="min-h-dvh">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[2000] focus:rounded-xl focus:bg-card focus:px-4 focus:py-2 focus:font-bold">
@@ -33,6 +41,7 @@ export function Layout() {
             </svg>
             Ayuda
           </NavLink>
+          {planning && <ScreenMeter seconds={seconds} />}
           <nav aria-label="Main">
             <ul className="flex flex-wrap gap-1 text-[0.95rem]">
               {nav.map((n) => (
@@ -53,6 +62,18 @@ export function Layout() {
         </div>
       </header>
       <main id="main" key={pathname} className="mx-auto max-w-3xl px-4 pb-24 pt-8">
+        {planning && seconds >= NUDGE_SECONDS && !nudgeDismissed && (
+          <div role="status" className="rise-in mb-6 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-marigold bg-marigold-soft px-4 py-3">
+            <span aria-hidden className="text-2xl">🌿</span>
+            <p className="flex-1">
+              <strong>You've been planning for {Math.floor(seconds / 60)} minutes.</strong> The top match is usually a great choice. The perfect one can wait;
+              the people who need help can't.
+            </p>
+            <button type="button" onClick={() => setNudgeDismissed(true)} className="min-h-11 rounded-xl px-3 font-bold text-forest underline">
+              Dismiss
+            </button>
+          </div>
+        )}
         <Outlet />
       </main>
       <footer className="mx-auto max-w-3xl px-4 pb-10 text-sm text-muted">
